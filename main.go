@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -92,7 +93,11 @@ func findIpAddress(vmName string) (ip net.IP, err error) {
 	}
 	vmid, err := c.GetVmRefByName(vmName)
 	if err != nil {
-		return nil, err
+		intVmid, err := strconv.Atoi(vmName)
+		if err != nil {
+			return nil, err
+		}
+		vmid = proxmox.NewVmRef(intVmid)
 	}
 	networkInterfaces, err := c.GetVmAgentNetworkInterfaces(vmid)
 	if err != nil {
