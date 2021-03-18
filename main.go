@@ -64,16 +64,18 @@ func handleRequest(w dns.ResponseWriter, r *dns.Msg) {
 	m := new(dns.Msg)
 	m.SetReply(r)
 	m.Authoritative = true
-	vmName := strings.Split(domain, ".")[0]
-	ip, err := findIpAddress(vmName)
-	if err == nil {
-		log.Printf("Found '%s' for vm '%s'", ip.String(), vmName)
-		rr := new(dns.A)
-		rr.Hdr = dns.RR_Header{Name: domain, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: uint32(ttl)}
-		rr.A = ip
-		m.Answer = []dns.RR{rr}
-	} else {
-		log.Print(err)
+	if r.Question[0].Qtype == dns.TypeA {
+		vmName := strings.Split(domain, ".")[0]
+		ip, err := findIpAddress(vmName)
+		if err == nil {
+			log.Printf("Found '%s' for vm '%s'", ip.String(), vmName)
+			rr := new(dns.A)
+			rr.Hdr = dns.RR_Header{Name: domain, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: uint32(ttl)}
+			rr.A = ip
+			m.Answer = []dns.RR{rr}
+		} else {
+			log.Print(err)
+		}
 	}
 	w.WriteMsg(m)
 }
