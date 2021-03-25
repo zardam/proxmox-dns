@@ -17,7 +17,7 @@ import (
 )
 
 var ttl int
-var ipPrefix, bind string
+var ipPrefix, bind, suffix string
 var insecure *bool
 
 func main() {
@@ -25,6 +25,7 @@ func main() {
 	flag.StringVar(&ipPrefix, "ipPrefix", "192.168.1.", "Prefix to match vm IP")
 	insecure = flag.Bool("insecure", true, "TLS insecure mode")
 	flag.StringVar(&bind, "bind", ":53", "Bind address:port")
+	flag.StringVar(&suffix, "suffix", "", "Domain suffix")
 	flag.Parse()
 
 	startDNSandWait()
@@ -65,16 +66,20 @@ func handleRequest(w dns.ResponseWriter, r *dns.Msg) {
 	m.SetReply(r)
 	m.Authoritative = true
 	if r.Question[0].Qtype == dns.TypeA {
-		vmName := strings.Split(domain, ".")[0]
-		ip, err := findIpAddress(vmName)
-		if err == nil {
-			log.Printf("Found '%s' for vm '%s'", ip.String(), vmName)
-			rr := new(dns.A)
-			rr.Hdr = dns.RR_Header{Name: domain, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: uint32(ttl)}
-			rr.A = ip
-			m.Answer = []dns.RR{rr}
+		if strings.HasSuffix(domain, suffix+".") {
+			vmName := strings.TrimSuffix(domain, suffix+".")
+			ip, err := findIpAddress(vmName)
+			if err == nil {
+				log.Printf("Found '%s' for vm '%s'", ip.String(), vmName)
+				rr := new(dns.A)
+				rr.Hdr = dns.RR_Header{Name: domain, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: uint32(ttl)}
+				rr.A = ip
+				m.Answer = []dns.RR{rr}
+			} else {
+				log.Print(err)
+			}
 		} else {
-			log.Print(err)
+			log.Printf("Invalid domain for %s", domain)
 		}
 	}
 	w.WriteMsg(m)
